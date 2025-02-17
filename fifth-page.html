@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Death Insurance</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 600px;
+            margin-top: 100px;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #007BFF;
+            font-weight: bold;
+        }
+
+        .btn {
+            width: 100%;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .confirmation {
+            text-align: center;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .confirmation h4 {
+            color: green;
+            font-weight: bold;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Buy Death Insurance</h2>
+        <p>Confirm your details and proceed with payment to buy death insurance.</p>
+
+        
+        <div class="mb-4">
+            <p><strong>Insurance Type:</strong> Death Insurance</p>
+            <p><strong>Premium:</strong> 0.1 ETH/Month</p>
+        </div>
+
+       
+        <div id="user-info" class="mb-4"></div>
+
+        
+        <div class="form-group form-check">
+            <input type="checkbox" class="form-check-input" id="digilocker-checkbox">
+            <label class="form-check-label" for="digilocker-checkbox">I confirm that my documents are uploaded to DigiLocker.</label>
+        </div>
+
+       
+        <div class="form-group form-check">
+            <input type="checkbox" class="form-check-input" id="termsCheckbox">
+            <label class="form-check-label" for="termsCheckbox">I agree to the <a href="#">terms and conditions</a>.</label>
+        </div>
+
+       
+        <button id="buy-insurance-button" class="btn btn-primary">Buy Insurance</button>
+
+       
+        <div id="loading-message" class="loading">
+            <p>Processing your transaction... <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></p>
+        </div>
+
+        
+        <div id="confirmation-message" class="confirmation">
+            <h4>Insurance Purchased Successfully!</h4>
+            <p>Your Insurance ID: <span id="insurance-id"></span></p>
+            <button id="view-portfolio-button" class="btn btn-success">View Portfolio</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+    <script>
+
+        // initialize web3
+        let web3;
+        if (typeof window.ethereum !== 'undefined') {
+            web3 = new Web3(window.ethereum);
+        } else {
+            alert('Please install MetaMask!');
+        }
+
+        const personalInfo = JSON.parse(localStorage.getItem('personalInfo'));
+        const userInfoDiv = document.getElementById('user-info');
+
+        if (personalInfo) {
+            userInfoDiv.innerHTML = `
+                <p><strong>Name:</strong> ${personalInfo.name} ${personalInfo.surname}</p>
+                <p><strong>Wallet Address:</strong> ${personalInfo.accountId}</p>
+                <p><strong>Email:</strong> ${personalInfo.email}</p>
+            `;
+        } else {
+            userInfoDiv.innerHTML = '<p>No user information found.</p>';
+        }
+
+        const buyInsuranceButton = document.getElementById('buy-insurance-button');
+        const digilockerCheckbox = document.getElementById('digilocker-checkbox');
+        const termsCheckbox = document.getElementById('termsCheckbox');
+        const confirmationMessageDiv = document.getElementById('confirmation-message');
+        const insuranceIdSpan = document.getElementById('insurance-id');
+        const viewPortfolioButton = document.getElementById('view-portfolio-button');
+        const loadingMessageDiv = document.getElementById('loading-message');
+
+        buyInsuranceButton.addEventListener('click', async () => {
+            if (!digilockerCheckbox.checked || !termsCheckbox.checked) {
+                alert('Please confirm DigiLocker document upload and accept the terms and conditions.');
+                return;
+            }
+
+            loadingMessageDiv.style.display = 'block';
+
+            const insurancePremium = web3.utils.toWei('0.1', 'ether'); // Convert Sepheth to Wei
+            const recipientAddress = '0x51e5613A6fC20A3BEb64A8e24877A9D95532dE7f';
+
+            // payment via MetaMask
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const senderAddress = accounts[0];
+
+                const transactionParameters = {
+                    to: recipientAddress, 
+                    from: senderAddress, 
+                    value: insurancePremium, 
+                    gas: '21000', 
+                    gasPrice: web3.utils.toWei('10', 'gwei'), 
+                };
+
+                const txHash = await web3.eth.sendTransaction(transactionParameters);
+
+                const insuranceId = "INS-" + Math.floor(Math.random() * 100000); // Simulate an Insurance ID
+                const purchasedInsurance = {
+                    type: 'Death Insurance',
+                    premium: '0.1 ETH/Month',
+                    insuranceId: insuranceId
+                };
+
+                let portfolio = JSON.parse(localStorage.getItem('portfolio')) || [];
+                portfolio.push(purchasedInsurance);
+                localStorage.setItem('portfolio', JSON.stringify(portfolio));
+
+                insuranceIdSpan.textContent = insuranceId;
+                confirmationMessageDiv.style.display = 'block';
+            } catch (error) {
+                console.error('Error buying insurance:', error);
+                alert('Failed to purchase insurance. Please try again.');
+            } finally {
+                loadingMessageDiv.style.display = 'none';
+            }
+        });
+
+        document.getElementById('view-portfolio-button').addEventListener('click', () => {
+              window.location.href = 'portfolio.html'; // Redirect to portfolio page
+        });
+
+        
+    </script>
+</body>
+</html>

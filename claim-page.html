@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claim Insurance</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js/dist/web3.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 600px;
+            margin-top: 100px;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #007BFF;
+        }
+
+        .claim-button {
+            margin-top: 10px;
+        }
+
+        .transaction-details {
+            margin-top: 20px;
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            border-radius: 10px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Claim Insurance</h2>
+        
+        <h5>Account Details</h5>
+        <p><strong>Name:</strong> <span id="user-name"></span></p>
+        <p><strong>Wallet Address:</strong> <span id="wallet-address"></span></p>
+        <p><strong>Insurance ID:</strong> <span id="insurance-id"></span></p>
+        <p><strong>Payout Amount:</strong> <span id="payout-amount"></span> Ganache ETH</p>
+
+        <div class="form-group form-check">
+            <input type="checkbox" class="form-check-input" id="document-checkbox">
+            <label class="form-check-label" for="document-checkbox">I confirm that my documents are verified.</label>
+        </div>
+
+        <button id="final-claim-button" class="btn btn-primary">Claim Insurance</button>
+
+        <p class="text-center mt-3"><a href="portfolio.html">Back to Portfolio</a></p>
+    </div>
+
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h5 id="modal-title"></h5>
+            <p id="modal-content"></p>
+        </div>
+    </div>
+
+    <script>
+        // Web3 and Smart Contract Setup
+        if (typeof window.ethereum !== 'undefined') {
+            window.web3 = new Web3(window.ethereum);
+        } else if (typeof window.web3 !== 'undefined') {
+            window.web3 = new Web3(window.web3.currentProvider);
+        } else {
+            alert("Please install MetaMask or another Ethereum-compatible browser.");
+        }
+
+        const contractABI = [
+            {
+                "inputs": [],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": true,
+                        "internalType": "address",
+                        "name": "claimant",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "payout",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "InsuranceClaimed",
+                "type": "event"
+            },
+            {
+                "inputs": [],
+                "name": "claimInsurance",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "stateMutability": "payable",
+                "type": "receive",
+                "payable": true
+            }
+        ];
+
+        
+        const contractAddress =  "0x7C79a2AaF6E7AF84a88C6c5FDe55c78bCE67A566"; 
+        const insuranceContract = new web3.eth.Contract(contractABI, contractAddress);
+
+        
+        const personalInfo = JSON.parse(localStorage.getItem('personalInfo'));
+        const insuranceInfo = JSON.parse(localStorage.getItem('insuranceInfo'));
+
+       
+        if (insuranceInfo) {
+            const premiumAmount = parseFloat(insuranceInfo.premium); 
+            const payoutAmount = (premiumAmount * 2).toFixed(2); 
+            const walletAddress = personalInfo ? personalInfo.accountId : 'Wallet address not found';
+            
+            document.getElementById('user-name').textContent = personalInfo ? `${personalInfo.name} ${personalInfo.surname}` : 'User not found';
+            document.getElementById('wallet-address').textContent = walletAddress;
+            document.getElementById('insurance-id').textContent = insuranceInfo.id; 
+            document.getElementById('payout-amount').textContent = payoutAmount; 
+        } else {
+            alert('No insurance information found. Please try again.');
+        }
+
+        document.getElementById('final-claim-button').addEventListener('click', async () => {
+            const isDocumentVerified = document.getElementById('document-checkbox').checked;
+
+            if (!isDocumentVerified) {
+                alert('Please verify your documents before claiming insurance.');
+                return;
+            }
+
+            const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+            const userAddress = accounts[0];
+
+            try {
+                const payoutAmount = (parseFloat(insuranceInfo.premium) * 2).toFixed(2); // Recalculate the payout amount
+                
+                const txReceipt = await insuranceContract.methods.claimInsurance().send({ 
+                    from: userAddress,
+                    value: web3.utils.toWei(payoutAmount, 'ether') // Convert payoutAmount to Wei
+                });
+                
+                document.getElementById('modal-title').textContent = 'Transaction Successful!';
+                document.getElementById('modal-content').innerHTML = `
+                    <strong>Transaction Hash:</strong> <a href="https://etherscan.io/tx/${txReceipt.transactionHash}" target="_blank">${txReceipt.transactionHash}</a><br>
+                    <strong>From Wallet Address:</strong> ${contractAddress}<br>
+                    <strong>To Wallet Address:</strong> ${userAddress}<br>
+                    <strong>Payout Amount:</strong> ${payoutAmount} Ganache ETH
+                `;
+                document.getElementById('transactionModal').style.display = 'block';
+            } catch (error) {
+                console.error('Claim error:', error);
+                document.getElementById('modal-title').textContent = 'Transaction Failed';
+                document.getElementById('modal-content').innerHTML = `
+                    <strong>Error:</strong> ${error.message}
+                `;
+                document.getElementById('transactionModal').style.display = 'block';
+            }
+        });
+
+        document.querySelector('.close').onclick = function() {
+            document.getElementById('transactionModal').style.display = 'none';
+        };
+
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('transactionModal')) {
+                document.getElementById('transactionModal').style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>

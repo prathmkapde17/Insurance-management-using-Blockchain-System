@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa; 
+        }
+
+        .container {
+            max-width: 600px;
+            margin-top: 100px;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #007BFF; 
+            font-weight: bold; 
+        }
+
+        @media (max-width: 768px) {
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+
+        .btn {
+            width: 100%;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        
+        .insurance-popup {
+            display: none;
+            position: absolute;
+            top: 40px;
+            left: 0;
+            background-color: white;
+            border: 1px solid #ddd;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            z-index: 1000;
+            width: 100%;
+        }
+
+        .insurance-popup table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .insurance-popup th, .insurance-popup td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .insurance-popup th {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        
+        .close-popup {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+
+        .close-popup button {
+            background-color: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>User Dashboard</h2>
+        <p>Your account details:</p>
+        <div id="account-details" class="mb-4"></div>
+
+       
+        <div class="position-relative">
+            <button id="view-insurances-button" class="btn btn-primary">View Policies and Insurances</button>
+            <div id="insurance-popup" class="insurance-popup">
+                
+                <div class="close-popup">
+                    <button id="close-popup-button">&times;</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Insurance Type</th>
+                            <th>Premium</th>
+                            <th></th> 
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Death Insurance</td>
+                            <td>0.1 ETH/month</td>
+                            <td><button class="btn btn-success btn-sm" id="buy-death-insurance">Buy</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <button id="portfolio-button" class="btn btn-primary mt-4">View Portfolio</button>
+        <p class="text-center mt-3">Want to update your information? <a href="third-page.html">Click Here</a></p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+    <script>
+        // Function to get wallet balance
+        async function getWalletBalance(walletAddress) {
+
+            // instance of Web3
+            if (typeof window.ethereum !== 'undefined') {
+                const web3 = new Web3(window.ethereum);
+
+                try {
+                    //  balance in Wei
+                    const balanceWei = await web3.eth.getBalance(walletAddress);
+                    // Convert Wei to Ether
+                    const balanceEther = web3.utils.fromWei(balanceWei, 'ether');
+                    return balanceEther;
+                } catch (error) {
+                    console.error('Error fetching balance:', error);
+                    return "Error fetching balance";
+                }
+            } else {
+                alert('Please install MetaMask!');
+                return null;
+            }
+        }
+        
+
+        const personalInfo = JSON.parse(localStorage.getItem('personalInfo'));
+
+        // Display 
+        const accountDetailsDiv = document.getElementById('account-details');
+        if (personalInfo) {
+            // Get the actual wallet balance
+            getWalletBalance(personalInfo.accountId).then(walletBalance => {
+                accountDetailsDiv.innerHTML = `
+                    <p><strong>Account ID:</strong> ${personalInfo.accountId}</p>
+                    <p><strong>Wallet Balance:</strong> ${walletBalance ? walletBalance + " ETH" : "Fetching..."} </p>
+                    <p><strong>Name:</strong> ${personalInfo.name} ${personalInfo.surname}</p>
+                    <p><strong>State:</strong> ${personalInfo.state}</p>
+                    <p><strong>Date of Birth:</strong> ${personalInfo.dob}</p>
+                    <p><strong>Phone Number:</strong> ${personalInfo.phone}</p>
+                    <p><strong>Email:</strong> ${personalInfo.email}</p>
+                    <p><strong>Sex:</strong> ${personalInfo.sex}</p>
+                `;
+            });
+        } else {
+            accountDetailsDiv.innerHTML = `<p>No account information found. Please create an account.</p>`;
+        }
+
+        //insurance popup
+        const viewInsurancesButton = document.getElementById('view-insurances-button');
+        const insurancePopup = document.getElementById('insurance-popup');
+        const closePopupButton = document.getElementById('close-popup-button');
+        
+        viewInsurancesButton.addEventListener('click', () => {
+            insurancePopup.style.display = 'block';
+        });
+
+      
+        document.getElementById('portfolio-button').addEventListener('click', () => {
+              window.location.href = 'portfolio.html'; 
+        });
+
+        
+        closePopupButton.addEventListener('click', () => {
+            insurancePopup.style.display = 'none';
+        });
+
+        
+        const buyDeathInsuranceButton = document.getElementById('buy-death-insurance');
+        buyDeathInsuranceButton.addEventListener('click', () => {
+            window.location.href = 'fifth-page.html'; 
+        });
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

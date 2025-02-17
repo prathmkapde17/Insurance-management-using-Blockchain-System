@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Portfolio</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 800px;
+            margin-top: 100px;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #007BFF;
+        }
+
+        .claim-button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Your Insurance Portfolio</h2>
+
+        <!--Table -->
+        <h5>Your Insurances</h5>
+        <div id="portfolio-details"></div>
+        
+        <div class="d-flex justify-content-between">
+            <button id="prev-btn" class="btn btn-secondary" disabled>Previous</button>
+            <button id="next-btn" class="btn btn-secondary">Next</button>
+        </div>
+
+        <p class="text-center mt-3"><a href="fourth-page.html">Back to Dashboard</a></p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <script>
+        // Connect to MetaMask
+        let web3;
+        if (typeof window.ethereum !== 'undefined') {
+            web3 = new Web3(window.ethereum);
+            window.ethereum.request({ method: 'eth_requestAccounts' });
+        } else {
+            alert('Please install MetaMask!');
+        }
+
+        const portfolio = JSON.parse(localStorage.getItem('portfolio')) || [];
+        const portfolioDetailsDiv = document.getElementById('portfolio-details');
+        const prevButton = document.getElementById('prev-btn');
+        const nextButton = document.getElementById('next-btn');
+
+        let currentPage = 0;
+        const itemsPerPage = 5;
+
+        
+        async function fetchTransactionTime(txHash) {
+            try {
+                const tx = await web3.eth.getTransaction(txHash);
+                const block = await web3.eth.getBlock(tx.blockNumber);
+                return block.timestamp * 1000;
+            } catch (error) {
+                console.error("Error fetching transaction time:", error);
+                return 0;
+            }
+        }
+
+       
+        async function sortPortfolioByTransactionTime() {
+            const portfolioWithTime = await Promise.all(portfolio.map(async (insurance) => {
+                const transactionTime = await fetchTransactionTime(insurance.transactionHash);
+                return { ...insurance, purchaseDate: transactionTime };
+            }));
+
+            portfolioWithTime.sort((a, b) => b.purchaseDate - a.purchaseDate);
+            return portfolioWithTime;
+        }
+
+       
+        if (portfolio.length === 0) {
+            portfolioDetailsDiv.innerHTML = `<p class="text-center">No insurance purchased yet. Please buy insurance to see your portfolio.</p>`;
+            prevButton.disabled = true;
+            nextButton.disabled = true;
+        } else {
+            sortPortfolioByTransactionTime().then(sortedPortfolio => {
+                displayInsurance(currentPage, sortedPortfolio);
+            });
+        }
+
+        function displayInsurance(page, sortedPortfolio) {
+            const start = page * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageItems = sortedPortfolio.slice(start, end);
+
+            if (pageItems.length === 0) {
+                portfolioDetailsDiv.innerHTML = `<p class="text-center">No insurance to display on this page.</p>`;
+                return;
+            }
+
+            let html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Premium</th>
+                            <th>Insurance ID</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            pageItems.forEach(insurance => {
+                const purchaseDate = new Date(insurance.purchaseDate).toLocaleString();
+                html += `
+                    <tr>
+                        <td>${insurance.type}</td>
+                        <td>${insurance.premium} ETH</td>
+                        <td>${insurance.insuranceId}</td>
+                        <td>${purchaseDate}</td>
+                        <td><button class="btn btn-warning claim-button" onclick="handleClaimButtonClick(${JSON.stringify(insurance).replace(/"/g, '&quot;')})">Claim Insurance</button></td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            portfolioDetailsDiv.innerHTML = html;
+
+            prevButton.disabled = page === 0;
+            nextButton.disabled = end >= sortedPortfolio.length;
+        }
+
+        function handleClaimButtonClick(insurance) {
+            if (!insurance || !insurance.insuranceId) {
+                alert('Invalid insurance information.');
+                return;
+            }
+
+            const insuranceInfo = {
+                id: insurance.insuranceId,
+                payout: insurance.payout,
+                name: insurance.name,
+                walletAddress: insurance.walletAddress,
+                type: insurance.type,
+                premium: insurance.premium
+            };
+
+            localStorage.setItem('insuranceInfo', JSON.stringify(insuranceInfo));
+            window.location.href = 'claim-page.html'; // Redirecting to claim-page.html
+        }
+        prevButton.addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                displayInsurance(currentPage, portfolio);
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if ((currentPage + 1) * itemsPerPage < portfolio.length) {
+                currentPage++;
+                displayInsurance(currentPage, portfolio);
+            }
+        });
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
